@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>人生选择电子沙盘</title>
+    <style>
+        body { font-family: "微软雅黑", sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #f5f5f5; }
+        .stage { display: none; }
+        .stage.active { display: block; }
+        .option { background: #fff; padding: 15px; margin: 10px 0; border-radius: 8px; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .option:hover { background: #e3f2fd; }
+        .status { background: #fff; padding: 10px; border-radius: 8px; margin-bottom: 20px; }
+        .countdown { color: #d32f2f; font-weight: bold; }
+        .ending { text-align: center; padding: 30px 0; }
+        .ending-title { font-size: 24px; color: #1976d2; margin: 20px 0; }
+    </style>
+</head>
+<body>
+    <!-- 初始界面 -->
+    <div id="stage0" class="stage active">
+        <h1>人生选择电子沙盘</h1>
+        <div class="status">
+            <p>初始状态：金钱100元 | 健康100% | 技能1级</p >
+            <p>目标：3次选择后达成高满意度结局！</p >
+        </div>
+        <button onclick="startGame()" style="padding: 10px 20px; font-size: 16px; background: #1976d2; color: #fff; border: none; border-radius: 4px; cursor: pointer;">开始游戏</button>
+    </div>
+
+    <!-- 第1次选择 -->
+    <div id="stage1" class="stage">
+        <h2>第1次选择：你要优先投资什么？</h2>
+        <div class="status">
+            <p>当前状态：金钱<span id="money1">100</span>元 | 健康<span id="health1">100</span>% | 技能<span id="skill1">1</span>级</p >
+            <p class="countdown">倒计时：<span id="count1">20</span>秒</p >
+        </div>
+        <div class="option" onclick="choose(1, 1)">
+            1. 全部存钱 → 金钱+50，技能-1，健康不变
+        </div>
+        <div class="option" onclick="choose(1, 2)">
+            2. 疯狂学习 → 技能+2，金钱-30，健康-10
+        </div>
+        <div class="option" onclick="choose(1, 3)">
+            3. 享受生活 → 健康+20，金钱-20，技能不变
+        </div>
+    </div>
+
+    <!-- 第2次选择 -->
+    <div id="stage2" class="stage">
+        <h2>第2次选择：遇到突发危机，你怎么应对？</h2>
+        <div class="status">
+            <p>当前状态：金钱<span id="money2">100</span>元 | 健康<span id="health2">100</span>% | 技能<span id="skill2">1</span>级</p >
+            <p class="countdown">倒计时：<span id="count2">20</span>秒</p >
+        </div>
+        <div class="option" onclick="choose(2, 1)">
+            1. 硬扛到底 → 健康-30，金钱不变，技能+1
+        </div>
+        <div class="option" onclick="choose(2, 2)">
+            2. 借钱解决 → 金钱-80，健康+10，技能不变
+        </div>
+        <div class="option" onclick="choose(2, 3)">
+            3. 求助朋友 → 健康+5，金钱-10，技能+1
+        </div>
+    </div>
+
+    <!-- 第3次选择 -->
+    <div id="stage3" class="stage">
+        <h2>第3次选择：最后的机会，你选择？</h2>
+        <div class="status">
+            <p>当前状态：金钱<span id="money3">100</span>元 | 健康<span id="health3">100</span>% | 技能<span id="skill3">1</span>级</p >
+            <p class="countdown">倒计时：<span id="count3">20</span>秒</p >
+        </div>
+        <div class="option" onclick="choose(3, 1)">
+            1. 高风险投资 → 金钱±100（随机），健康-20，技能不变
+        </div>
+        <div class="option" onclick="choose(3, 2)">
+            2. 提升技能 → 技能+3，金钱-10，健康+10
+        </div>
+        <div class="option" onclick="choose(3, 3)">
+            3. 辞职旅行 → 健康+50，金钱-50，技能-1
+        </div>
+    </div>
+
+    <!-- 结局界面 -->
+    <div id="stage4" class="stage">
+        <div class="ending">
+            <h2>最终结局</h2>
+            <div class="status">
+                <p>最终状态：金钱<span id="money4">100</span>元 | 健康<span id="health4">100</span>% | 技能<span id="skill4">1</span>级</p >
+            </div>
+            <div class="ending-title" id="endingTitle">人生赢家</div>
+            <p id="endingDesc">你平衡了所有维度！</p >
+            <button onclick="restart()" style="margin-top: 20px; padding: 10px 20px; font-size: 16px; background: #1976d2; color: #fff; border: none; border-radius: 4px; cursor: pointer;">重新开始</button>
+        </div>
+    </div>
+
+    <!-- 引入Pyodide -->
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.24.1/full/pyodide.js"></script>
+    <script>
+        let pyodide;
+        let gameData = { money: 100, health: 100, skill: 1 };
+        let countdownTimer;
+
+        // 初始化Pyodide
+        async function initPyodide() {
+            pyodide = await loadPyodide({
+                indexURL: "https://cdn.jsdelivr.net/pyodide/v0.24.1/full/"
+            });
+        }
+        initPyodide();
+
+        // 开始游戏
+        function startGame() {
+            showStage(1);
+            startCountdown(1);
+        }
+
+        // 显示指定阶段
+        function showStage(stageNum) {
+            document.querySelectorAll('.stage').forEach(stage => stage.classList.remove('active'));
+            document.getElementById(`stage${stageNum}`).classList.add('active');
+            updateStatus(stageNum);
+        }
+
+        // 更新状态显示
+        function updateStatus(stageNum) {
+            document.getElementById(`money${stageNum}`).textContent = gameData.money;
+            document.getElementById(`health${stageNum}`).textContent = gameData.health;
+            document.getElementById(`skill${stageNum}`).textContent = gameData.skill;
+        }
+
+        // 开始倒计时
+        function startCountdown(stageNum) {
+            let count = 20;
+            document.getElementById(`count${stageNum}`).textContent = count;
+            countdownTimer = setInterval(() => {
+                count--;
+                document.getElementById(`count${stageNum}`).textContent = count;
+                if (count <= 0) {
+                    clearInterval(countdownTimer);
+                    choose(stageNum, 1); // 超时默认选1
+                }
+            }, 1000);
+        }
+
+        // 选择选项
+        async function choose(stageNum, optionNum) {
+            clearInterval(countdownTimer);
+            // 调用Python处理选择逻辑
+            const result = await pyodide.runPython(`
+                money = ${gameData.money}
+                health = ${gameData.health}
+                skill = ${gameData.skill}
+                stage = ${stageNum}
+                option = ${optionNum}
+
+                # 处理选择
+                if stage == 1:
+                    if option == 1:
+                        money += 50
+                        skill -= 1
+                    elif option == 2:
+                        skill += 2
+                        money -= 30
+                        health -= 10
+                    elif option == 3:
+                        health += 20
+                        money -= 20
+                elif stage == 2:
+                    if option == 1:
+                        health -= 30
+                    elif option == 2:
+                        money -= 80
+                        health += 10
+                    elif option == 3:
+                        health += 5
+                        money -= 10
+                        skill += 1
+                elif stage == 3:
+                    if option == 1:
+                        import random
+                        money += random.choice([-100, 100])
+                        health -= 20
+                    elif option == 2:
+                        skill += 3
+                        money -= 10
+                        health += 10
+                    elif option == 3:
+                        health += 50
+                        money -= 50
+                        skill -= 1
+
+                # 状态限制（不能为负）
+                money = max(money, 0)
+                health = max(health, 0)
+                skill = max(skill, 0)
+
+                # 返回结果
+                (money, health, skill)
+            `);
+            // 更新游戏数据
+            gameData.money = result[0];
+            gameData.health = result[1];
+            gameData.skill = result[2];
+
+            // 进入下一个阶段
+            if (stageNum < 3) {
+                showStage(stageNum + 1);
+                startCountdown(stageNum + 1);
+            } else {
+                showEnding();
+            }
+        }
+
+        // 显示结局
+        function showEnding() {
+            updateStatus(4);
+            let title, desc;
+            if (gameData.money <= 0 || gameData.health <= 0) {
+                title = "破产/猝死";
+                desc = "你的选择太激进啦！";
+            } else if (gameData.money >= 200 && gameData.skill >= 3 && gameData.health >= 80) {
+                title = "人生赢家";
+                desc = "你平衡了所有维度！";
+            } else if (gameData.skill >= 4 && gameData.money >= 50) {
+                title = "技能专家";
+                desc = "你靠专业能力逆袭！";
+            } else if (gameData.health >= 90 && gameData.money >= 50) {
+                title = "健康长寿";
+                desc = "你活得最舒服！";
+            } else {
+                title = "普通社畜";
+                desc = "平凡但真实的人生~";
+            }
+            document.getElementById("endingTitle").textContent = title;
+            document.getElementById("endingDesc").textContent = desc;
+            showStage(4);
+        }
+
+        // 重新开始
+        function restart() {
+            gameData = { money: 100, health: 100, skill: 1 };
+            showStage(0);
+        }
+    </script>
+</body>
+</html>
